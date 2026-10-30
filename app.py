@@ -16,6 +16,78 @@ def load_data():
 
 df = load_data()
 
+# Estilização customizada da Sidebar e Filtros Fixos
+st.markdown("""
+<style>
+    /* Ajusta o espaçamento da sidebar para caber todos os filtros sem rolagem desnecessária */
+    [data-testid="stSidebarContent"] {
+        padding-top: 1.5rem !important;
+    }
+    
+    /* Cabeçalho de seção na sidebar */
+    .sidebar-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.5rem;
+        margin-bottom: 0.4rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+    .state-counter-badge {
+        background: rgba(220, 20, 60, 0.18);
+        color: #ff6b81;
+        border: 1px solid rgba(220, 20, 60, 0.4);
+        border-radius: 999px;
+        padding: 2px 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    /* Estilização dos chips/pills de Estados (fixos e sem barra de rolagem) */
+    [data-testid="stPills"] div[role="listbox"] {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 6px !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    [data-testid="stPills"] button {
+        width: 100% !important;
+        justify-content: center !important;
+        border-radius: 8px !important;
+        padding: 4px 8px !important;
+        min-height: 30px !important;
+        font-size: 0.78rem !important;
+        font-weight: 500 !important;
+        transition: all 0.18s ease !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        background-color: rgba(255, 255, 255, 0.03) !important;
+    }
+    [data-testid="stPills"] button:hover {
+        border-color: rgba(220, 20, 60, 0.6) !important;
+        background-color: rgba(220, 20, 60, 0.1) !important;
+        transform: translateY(-1px);
+    }
+    [data-testid="stPills"] button[aria-selected="true"] {
+        background: linear-gradient(135deg, rgba(220, 20, 60, 0.28), rgba(220, 20, 60, 0.14)) !important;
+        border-color: #dc143c !important;
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        box-shadow: 0 2px 6px rgba(220, 20, 60, 0.2) !important;
+    }
+
+    /* Botões rápidos (Todos / Limpar) mais compactos */
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button {
+        padding: 0.2rem 0.5rem !important;
+        min-height: 28px !important;
+        font-size: 0.78rem !important;
+        border-radius: 6px !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 #Sidebar
 st.sidebar.title("Filtros")
 st.sidebar.markdown("**Fonte:** [Kaggle – Forest Fires in Brazil](https://www.kaggle.com/datasets/gustavomodelli/forest-fires-in-brazil)")
@@ -24,7 +96,40 @@ anos = sorted(df["year"].unique())
 estados = sorted(df["state"].unique())
 
 ano_range = st.sidebar.slider("Período (ano)", int(min(anos)), int(max(anos)), (int(min(anos)), int(max(anos))))
-estados_sel = st.sidebar.multiselect("Estados", estados, default=estados)
+
+# Inicializa estado da seleção de estados
+if "estados_pills" not in st.session_state:
+    st.session_state["estados_pills"] = estados
+
+# Botões de ação rápida (Selecionar todos / Limpar)
+btn_col1, btn_col2 = st.sidebar.columns(2)
+if btn_col1.button("✓ Todos", use_container_width=True):
+    st.session_state["estados_pills"] = estados
+    st.rerun()
+if btn_col2.button("✕ Limpar", use_container_width=True):
+    st.session_state["estados_pills"] = []
+    st.rerun()
+
+qtd_sel = len(st.session_state.get("estados_pills", estados))
+st.sidebar.markdown(
+    f'<div class="sidebar-section-header">'
+    f'<span>Estados</span>'
+    f'<span class="state-counter-badge">{qtd_sel}/{len(estados)}</span>'
+    f'</div>',
+    unsafe_allow_html=True
+)
+
+estados_sel = st.sidebar.pills(
+    "Estados",
+    options=estados,
+    selection_mode="multi",
+    key="estados_pills",
+    label_visibility="collapsed"
+)
+
+if not estados_sel:
+    st.warning("⚠️ Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
+    st.stop()
 
 df_f = df[(df["year"] >= ano_range[0]) & (df["year"] <= ano_range[1]) & (df["state"].isin(estados_sel))]
 
